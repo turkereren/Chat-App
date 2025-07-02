@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Gerçek-Zamanlı Chat</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    integrity="sha384-ENjdO4Dr2bkBIFxQpeoYzP0GH7lQqE6BT62c4VWYlEYwFvZz+0C+Xh4u5F5Bv1zN"
+    crossorigin="anonymous"
+  >
+
+  <!-- Socket.IO Client (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4/dist/socket.io.min.js"></script>
+
+  <style>
+    body {
+      background: #f8f9fa;
+      color: #343a40;
+    }
+    #chat {
+      height: 400px;
+      overflow-y: auto;
+      background: #ffffff;
+      padding: 1rem;
+      border: 1px solid #dee2e6;
+      border-radius: 0.25rem;
+    }
+    #chat p {
+      margin-bottom: 0.5rem;
+    }
+    .system-msg {
+      font-style: italic;
+      color: #6c757d;
+    }
+  </style>
+</head>
+<body>
+  <div class="container py-4">
+    <div class="card shadow-sm">
+      <div class="card-header text-center bg-primary text-white">
+        <h2 class="mb-0">Gerçek-Zamanlı Chat</h2>
+      </div>
+      <div class="card-body">
+        <div id="users" class="mb-2 text-end fst-italic text-secondary"></div>
+        <div id="chat" class="mb-3"></div>
+
+        <div class="input-group mb-2">
+          <input
+            id="username"
+            type="text"
+            class="form-control"
+            placeholder="Kullanıcı adınız"
+            autocomplete="off"
+          >
+          <button id="join" class="btn btn-outline-primary">Katıl</button>
+        </div>
+
+        <div class="input-group">
+          <input
+            id="message"
+            type="text"
+            class="form-control"
+            placeholder="Mesajınızı yazın ve Enter’a basın"
+            autocomplete="off"
+            disabled
+          >
+          <button id="send" class="btn btn-outline-success" disabled>Gönder</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+
+    console.log('io:', typeof io);
+    const socket = io();
+
+
+    const usersEl    = document.getElementById('users');
+    const chatEl     = document.getElementById('chat');
+    const userIn     = document.getElementById('username');
+    const joinBtn    = document.getElementById('join');
+    const msgIn      = document.getElementById('message');
+    const sendBtn    = document.getElementById('send');
+
+    let joined = false;
+
+
+    function scrollDown(){
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+
+    function doJoin(){
+      const name = userIn.value.trim();
+      if(!name) return alert('Lütfen bir kullanıcı adı girin!');
+      socket.emit('join', { username: name });
+      joined = true;
+      userIn.disabled = true;
+      joinBtn.disabled = true;
+      msgIn.disabled = false;
+      sendBtn.disabled = false;
+      usersEl.textContent = `Siz: ${name}`;
+    }
+    joinBtn.addEventListener('click', doJoin);
+    userIn.addEventListener('keydown', e => {
+      if(e.key === 'Enter') doJoin();
+    });
+
+
+    function doSend(){
+      if(!joined) return alert('Önce sohbete katılın!');
+      const txt = msgIn.value.trim();
+      if(!txt) return;
+      socket.emit('message', { msg: txt });
+      msgIn.value = '';
+    }
+    sendBtn.addEventListener('click', doSend);
+    msgIn.addEventListener('keydown', e => {
+      if(e.key === 'Enter') doSend();
+    });
+
+
+    socket.on('user_joined', data => {
+      const p = document.createElement('p');
+      p.className = 'system-msg';
+      p.textContent = data.msg;
+      chatEl.appendChild(p);
+      scrollDown();
+    });
+
+
+    socket.on('user_left', data => {
+      const p = document.createElement('p');
+      p.className = 'system-msg';
+      p.textContent = data.msg;
+      chatEl.appendChild(p);
+      scrollDown();
+    });
+
+
+    socket.on('message', data => {
+      const p = document.createElement('p');
+      p.innerHTML = `<strong>${data.username}:</strong> ${data.msg}`;
+      chatEl.appendChild(p);
+      scrollDown();
+    });
+  </script>
+</body>
+</html>
